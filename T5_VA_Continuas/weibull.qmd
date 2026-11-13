@@ -1,0 +1,201 @@
+---
+title: "Distribución Weibull"
+lang: es
+Student: "Jocelyn Padilla M" 
+---
+
+```{=html}
+<style>
+main.content {
+text-align: justify}
+</style>
+```
+
+```{r}
+#| label: setup
+#| echo: false
+#| message: false
+#| warning: false
+
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(RColorBrewer)
+library(plotly)
+library(scales)
+library(viridis)
+
+```
+
+Desarrollar como en la demás distribuciones, incluyendo la función de probabilidad y la función de distribución, gráficas considerando el cambio en los parámetros de la distribución. Características de la distribución (media, varianza, moda, cv). Un ejemplo con valores simulados y la verificación del teorema central del límite. Tomar como referencia principal el libro Introducción a la Probabilidad de Luis Rincón, páginas 278-281.
+
+::: {#def-weibull}
+Una variable aleatoria continua $X$ sigue una **distribución Weibull** con parámetros de forma $k > 0$ y de escala $\lambda > 0$, denotada como $X \sim \text{Weibull}(k, \lambda)$, si su función de densidad de probabilidad está dada por:
+
+\begin{equation}
+f(x) = \begin{cases}
+\frac{k}{\lambda} \left(\frac{x}{\lambda}\right)^{k-1} e^{-(x/\lambda)^k} & \text{si } x \geq 0 \\
+0 & \text{si } x < 0
+\end{cases}
+\end{equation}
+
+donde:
+- $k$ es el **parámetro de forma** (*shape parameter*).
+- $\lambda$ es el **parámetro de escala** (*scale parameter*).
+:::
+
+```{r}
+#| label: pdf-weibull-variacion
+#| fig-cap: "Función de densidad de probabilidad Weibull para diferentes parámetros"
+
+x_vals <- seq(0, 5, length.out = 1000)
+
+# Variando el parámetro de forma k (con escala λ = 1 fija)
+k_vals <- c(0.5, 1, 1.5, 2.5, 5)
+df_shape <- data.frame()
+for (k in k_vals) {
+  temp <- data.frame(
+    x = x_vals,
+    y = dweibull(x_vals, shape = k, scale = 1),
+    parametro = paste("k =", k)
+  )
+  df_shape <- rbind(df_shape, temp)
+}
+
+p1 <- ggplot(df_shape, aes(x = x, y = y, color = parametro)) +
+  geom_line(linewidth = 1.2) +
+  labs(title = "Variando el parámetro de forma (k)",
+       subtitle = "Escala fija: λ = 1",
+       x = "x", y = "f(x)", color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
+  scale_color_viridis_d() +
+  xlim(0, 3) + ylim(0, 2.5)
+
+# Variando el parámetro de escala λ (con forma k = 2 fija)
+lambda_vals <- c(0.5, 1, 1.5, 2)
+df_scale <- data.frame()
+for (lam in lambda_vals) {
+  temp <- data.frame(
+    x = x_vals,
+    y = dweibull(x_vals, shape = 2, scale = lam),
+    parametro = paste("λ =", lam)
+  )
+  df_scale <- rbind(df_scale, temp)
+}
+
+p2 <- ggplot(df_scale, aes(x = x, y = y, color = parametro)) +
+  geom_line(linewidth = 1.2) +
+  labs(title = "Variando el parámetro de escala (λ)",
+       subtitle = "Forma fija: k = 2",
+       x = "x", y = "f(x)", color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold")) +
+  scale_color_viridis_d() +
+  xlim(0, 4) + ylim(0, 1.5)
+
+grid.arrange(p1, p2, ncol = 2) 
+```
+
+Función de distribución acumulada (CDF)
+
+::: {#def-cdf_weibull}
+La función de distribución acumulativa (CDF) de una variable aleatoria $X \sim \text{Weibull}(k, \lambda)$ está dada por:
+
+\begin{equation}
+F(x) = P(X \leq x) = \begin{cases}
+1 - e^{-(x/\lambda)^k} & \text{si } x \geq 0 \
+0 & \text{si } x < 0
+\end{cases}
+\end{equation}
+
+```{r}
+#| label: cdf-weibull-grafico
+#| fig-cap: "Función de distribución acumulativa Weibull"
+
+df_cdf <- data.frame()
+for (k in k_vals) {
+  temp <- data.frame(
+    x = x_vals,
+    y = pweibull(x_vals, shape = k, scale = 1),
+    parametro = paste("k =", k)
+  )
+  df_cdf <- rbind(df_cdf, temp)
+}
+
+ggplot(df_cdf, aes(x = x, y = y, color = parametro)) +
+  geom_line(linewidth = 1.2) +
+  geom_hline(yintercept = c(0, 0.5, 1), linetype = "dashed", alpha = 0.5) +
+  labs(title = "Función de Distribución Acumulativa (CDF)",
+       subtitle = "Efecto del parámetro de forma k (con λ = 1)",
+       x = "x", y = "F(x)", color = "Parámetro") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5)) +
+  scale_color_viridis_d() +
+  xlim(0, 3) + ylim(0, 1)
+```
+Medidas descriptivasPara una distribución
+$X \sim \text{Weibull}(k, \lambda)$:
+
+1. Media (Esperanza)$$E(X) = \lambda \Gamma\left(1 + \frac{1}{k}\right)$$
+2. Varianza$$\text{Var}(X) = \lambda^2 \left[ \Gamma\left(1 + \frac{2}{k}\right) - \left(\Gamma\left(1 + \frac{1}{k}\right)\right)^2 \right]$$
+3. Moda$$\text{Moda} = \lambda \left(\frac{k-1}{k}\right)^{1/k} \quad \text{para } k > 1$$(Si $k \leq 1$, la moda es $0$).
+4. Coeficiente de Variación (CV)$$CV = \frac{\sqrt{\text{Var}(X)}}{E(X)} = \frac{\sqrt{\Gamma\left(1 + \frac{2}{k}\right) - \left(\Gamma\left(1 + \frac{1}{k}\right)\right)^2}}{\Gamma\left(1 + \frac{1}{k}\right)}$$
+
+
+Simulación y verificación del Teorema Central del Límite (TCL)
+```{r}
+#| label: simulacion-tcl-weibull
+#| warning: false
+#| message: false
+#| fig-width: 12
+#| fig-height: 8
+
+set.seed(42)
+
+k_sim <- 2.0
+lambda_sim <- 3.0
+
+# Valores teóricos
+media_teo <- lambda_sim * gamma(1 + 1/k_sim)
+var_teo <- lambda_sim^2 * (gamma(1 + 2/k_sim) - (gamma(1 + 1/k_sim))^2)
+
+# Tamaños de muestra para verificar el TCL
+tamanos_n <- c(5, 30, 50, 100)
+num_simulaciones <- 2000
+plots_tcl <- list()
+
+for (i in seq_along(tamanos_n)) {
+  n <- tamanos_n[i]
+  medias <- replicate(num_simulaciones, mean(rweibull(n, shape = k_sim, scale = lambda_sim)))
+  df_n <- data.frame(media = medias)
+  
+  sd_teorica <- sqrt(var_teo / n)
+  
+  p <- ggplot(df_n, aes(x = media)) +
+    geom_histogram(aes(y = after_stat(density)), bins = 35, fill = "steelblue", color = "white", alpha = 0.7) +
+    stat_function(fun = dnorm, args = list(mean = media_teo, sd = sd_teorica), color = "red", linewidth = 1.2) +
+    labs(
+      title = paste("Tamaño de muestra n =", n),
+      x = "Media muestral",
+      y = "Densidad"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(size = 12, face = "bold", hjust = 0.5),
+      axis.title = element_text(size = 10)
+    )
+  
+  plots_tcl[[i]] <- p
+}
+
+grid.arrange(grobs = plots_tcl, ncol = 2,
+             top = "Verificación del Teorema Central del Límite (TCL) para Weibull(k=2, λ=3)")
+```
+
+
+::: 
+
